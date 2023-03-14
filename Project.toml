@@ -1,0 +1,7 @@
+name = "PulseWavesIO"
+uuid = "dfb852f3-d140-4c5e-a85b-3d46a1175466"
+authors = ["Daniel Schraik <daniel.schraik@aalto.fi>"]
+version = "0.1.0"
+
+[deps]
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
