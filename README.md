@@ -7,18 +7,18 @@ This is a native Julia implementation to read the full waveform lidar data forma
 
 ## Example usage
 
-The PulseWaves format is a pair of files, one with ending '.pls', and one with '.wvs'.
-The 'load' function takes the path to the '.pls' file, and throws an error if there is no '.wvs' file in the same directory with the same name (except the different file extension).
+The PulseWaves format is a pair of files, one with ending `.pls`, and one with `.wvs`.
+The `load` function takes the path to the `.pls` file, and throws an error if there is no `.wvs` file in the same directory with the same name (except the different file extension).
 
-'load' returns the Pulse header, pulses, the (vestigial) waves header, the waveforms, and the sampling type.
+`load` returns the Pulse header, pulses, the (vestigial) waves header, the waveforms, and the sampling type.
 The sampling type is not strictly part of the data, but it is returned as a convenience to distinguish system pulse samplings from return samplings.
 
 Example code:
-'''
+```
 Using PulseWavesIO, FileIO
 
 header, pulses, waves_header, waves, samplingType = load("path/to/pls/file")
-'''
+```
 
 ## Roadmap
 
