@@ -10,10 +10,11 @@ struct PulseRecord
     FirstReturningSample::Int16
     LastReturningSample::Int16
     PulseDescriptorIndex::Int8
-    Reserved::UInt8
-    EdgeOfScanLine::Bool
-    ScanDirection::Bool
-    MirrorFacet::Int8
+    OtherData::Int8
+    #Reserved::UInt8
+    #EdgeOfScanLine::Bool
+    #ScanDirection::Bool
+    #MirrorFacet::Int8
     Intensity::UInt8
     Classification::UInt8
 end
@@ -28,6 +29,17 @@ function ReadAncillaryPulseData(dat::Int8)
   Reserved, EdgeOfScanLine, ScanDirection, MirrorFacet
 end
 
+function WriteAncillaryPulseData(Reserved::UInt8, EdgeOfScanLine::Bool, ScanDirection::Bool, MirrorFacet::Int8)
+  @assert(Reserved == 0, "Error; Pulse encountered where Reserved byte is non-zero")
+  Reserved_bs = bitstring(Reserved)[5:end]
+  EdgeOfScanLine_bs = bitstring(EdgeOfScanLine)[end]
+  ScanDirection_bs = bitstring(ScanDirection)[end]
+  @assert(MirrorFacet <= 3, "Overflow error with Mirror Facet")
+  MirrorFacet_bs = bitstring(MirrorFacet)[7:end]
+  outString = Reserved_bs * EdgeOfScanLine_bs * ScanDirection_bs * MirrorFacet_bs
+  parse(Int8, outString)
+end
+
 function Base.read(io::IO, ::Type{PulseRecord})
   GPSTimestampT = read(io,Int64)
   OffsetToWaves = read(io,Int64)
@@ -40,7 +52,8 @@ function Base.read(io::IO, ::Type{PulseRecord})
   FirstReturningSample = read(io,Int16)
   LastReturningSample = read(io,Int16)
   PulseDescriptorIndex = read(io,Int8)
-  Reserved, EdgeOfScanLine, ScanDirection, MirrorFacet = ReadAncillaryPulseData(read(io,Int8))
+  OtherData = read(io,Int8)
+  #Reserved, EdgeOfScanLine, ScanDirection, MirrorFacet = ReadAncillaryPulseData(read(io,Int8))
   Intensity = read(io,UInt8)
   Classification = read(io,UInt8)
 
@@ -56,14 +69,31 @@ function Base.read(io::IO, ::Type{PulseRecord})
     FirstReturningSample,
     LastReturningSample,
     PulseDescriptorIndex,
-    Reserved,
-    EdgeOfScanLine,
-    ScanDirection,
-    MirrorFacet,
+    OtherData,
+    #Reserved,
+    #EdgeOfScanLine,
+    #ScanDirection,
+    #MirrorFacet,
     Intensity,
     Classification)
 end
 
+function Base.write(io::IO, p::PulseRecord)
+  write(io, p.GPSTimestampT)
+  write(io, p.OffsetToWaves)
+  write(io, p.AnchorX)
+  write(io, p.AnchorY)
+  write(io, p.AnchorZ)
+  write(io, p.TargetX)
+  write(io, p.TargetY)
+  write(io, p.TargetZ)
+  write(io, p.FirstReturningSample)
+  write(io, p.LastReturningSample)
+  write(io, p.PulseDescriptorIndex)
+  write(io, p.OtherData)#WriteAncillaryPulseData(p.Reserved, p.EdgeOfScanLine, p.ScanDirection, p.MirrorFacet))
+  write(io, p.Intensity)
+  write(io, p.Classification)
+end
 
 function Base.show(io::IO, p::PulseRecord)
   println(io,string("GPSTimestampT        = ",p.GPSTimestampT))
@@ -77,10 +107,11 @@ function Base.show(io::IO, p::PulseRecord)
   println(io,string("FirstReturningSample = ",p.FirstReturningSample))
   println(io,string("LastReturningSample  = ",p.LastReturningSample))
   println(io,string("PulseDescriptorIndex = ",p.PulseDescriptorIndex))
-  println(io,string("Reserved             = ",p.Reserved))
-  println(io,string("EdgeOfScanline       = ",p.EdgeOfScanLine))
-  println(io,string("ScanDirection        = ",p.ScanDirection))
-  println(io,string("MirrorFacet          = ",p.MirrorFacet))
+  println(io,string("Other Data		  = ",bitstring(p.OtherData)))
+  #println(io,string("Reserved             = ",p.Reserved))
+  #println(io,string("EdgeOfScanline       = ",p.EdgeOfScanLine))
+  #println(io,string("ScanDirection        = ",p.ScanDirection))
+  #println(io,string("MirrorFacet          = ",p.MirrorFacet))
   println(io,string("Intensity            = ",p.Intensity))
   println(io,string("Classification       = ",p.Classification))
 end

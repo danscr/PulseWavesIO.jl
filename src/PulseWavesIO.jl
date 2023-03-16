@@ -8,7 +8,9 @@ export
     PulseRecord,
     PulseWavesVariableLengthRecord,
     WavesHeader,
-    WavesRecord
+    WavesRecord,
+    PulsesToRays,
+    RescalePulseTimestamps
 
     # Functions
     include("meta.jl")
@@ -22,7 +24,7 @@ export
 function __init__()
     # these should eventually go in
     # https://github.com/JuliaIO/FileIO.jl/blob/master/src/registry.jl
-    add_format(format"PLS", "PulseWavesPulse", ".pls", [:LidarLeafArea])
+    add_format(format"PLS", "PulseWavesPulse", ".pls", [:PulseWavesIO])
 end
 
 end

@@ -18,6 +18,13 @@ function Base.read(io::IO, ::Type{PulseWavesLookupTableHeader})
 			      )
 end
 
+function Base.write(io::IO, h::PulseWavesLookupTableHeader)
+  write(io, h.Size)
+  write(io, h.Reserved)
+  write(io, h.NumberTables)
+  writestring(io, h.Description, 64)
+end
+
 struct PulseWavesLookupTableRecord
   Size::UInt32
   Reserved::UInt32
@@ -54,6 +61,21 @@ function Base.read(io::IO, ::Type{PulseWavesLookupTableRecord})
 			      Description,
 			      Entries
 			      )
+end
+
+function Base.write(io::IO, r::PulseWavesLookupTableRecord)
+  write(io,r.Size)
+  write(io,r.Reserved)
+  write(io,r.NumberEntries)
+  write(io,r.UnitOfMeasurement)
+  write(io,r.DataType)
+  write(io,r.Options)
+  write(io,r.Compression)
+  write(io,r.Description)
+  for i ∈ 1:r.NumberEntries
+    write(io,r.Entries[i])
+  end
+  nothing
 end
 
 struct PulseWavesLookupTable
@@ -116,6 +138,18 @@ function Base.read(io::IO, ::Type{PulseWavesCompositionRecord})
 		    ScannerIndex,
 		    Description
 		    )
+end
+
+function Base.write(io::IO, c::PulseWavesCompositionRecord)
+  write(io, c.Size)
+  write(io, c.Reserved                )
+  write(io, c.OpticalCenterToAnchorPoint)
+  write(io, c.NumberOfExtraWaveBytes  )
+  write(io, c.NumberOfSamplings       )
+  write(io, c.SampleUnits             )
+  write(io, c.Compression             )
+  write(io, c.ScannerIndex            )
+  writestring(io, c.Description, 64)
 end
 
 struct PulseWavesSamplingRecord
@@ -201,6 +235,26 @@ function Base.read(io::IO, ::Type{PulseWavesSamplingRecord})
 			    )
 end
 
+function Base.write(io::IO, s::PulseWavesSamplingRecord)
+  write(io, s.Size                        )
+  write(io, s.Reserved                   )
+  write(io, s.Type                     )
+  write(io, s.Channel                  )
+  write(io, s.Unused                     )
+  write(io, s.BitsForDurationFromAnchor  )
+  write(io, s.ScaleForDurationFromAnchor )
+  write(io, s.OffsetForDurationFromAnchor)
+  write(io, s.BitsForNumberOfSegments    )
+  write(io, s.BitsForNumberOfSamples     )
+  write(io, s.NumberOfSegments           )
+  write(io, s.NumberOfSamples            )
+  write(io, s.BitsPerSample              )
+  write(io, s.LookupTableIndex           )
+  write(io, s.SampleUnits                )
+  write(io, s.Compression                )
+  writestring(io, s.Description, 64)
+end
+
 struct PulseWavesPulseDescriptor
   Composition::PulseWavesCompositionRecord
   Sampling::Vector{PulseWavesSamplingRecord}
@@ -214,6 +268,13 @@ function Base.read(io::IO, ::Type{PulseWavesPulseDescriptor})
   end
   
   PulseWavesPulseDescriptor(Composition, Sampling)
+end
+
+function Base.write(io::IO, pd::PulseWavesPulseDescriptor)
+  write(io, pd.Composition)
+  for i ∈ 1:pd.Composition.NumberOfSamplings
+    write(io,pd.Sampling[i])
+  end
 end
 
 struct PulseWavesVariableLengthRecord
@@ -270,7 +331,7 @@ function Base.write(io::IO, VLR::PulseWavesVariableLengthRecord)
     writestring(io, VLR.UserID, 16)
     write(io, VLR.RecordID)
     write(io, VLR.Reserved)
-    @assert(sizeof(VLR.Data) == VLR.RecordLengthAfterHeader)
+    #@assert(sizeof(VLR.Data) == VLR.RecordLengthAfterHeader)
     write(io, VLR.RecordLengthAfterHeader)
     write(io, VLR.Description)
     write(io, VLR.Data)

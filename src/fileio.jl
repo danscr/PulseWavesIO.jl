@@ -24,11 +24,9 @@ function load(f_pls::File{format"PLS"})
     	    @assert(position(s_pls) - pos == 96, "More than the single mandatory appended variable length record suspected.")
     	    #Start reading the mandatory AVLR header to make sure everything is correct
     	    seek(s_pls, pos)
-    	    read(s_pls,24) #discard userid,recordid,reserved
-    	    @assert(read(s_pls,UInt64) == 0, "Mandatory appended variable length record has non-zero length after header! Something is wrong...") #record length after header must be 0
-    	    read(s_pls,64)
+	    MandatoryAppendedVariableLengthRecord = read(s_pls,96)
+	    @assert(only(reinterpret(UInt64, MandatoryAppendedVariableLengthRecord[25:32])) == 0, "Mandatory appended variable length record has non-zero length after header! Something is wrong...") #record length after header must be 0
     	    @assert(eof(s_pls),"EOF of Pulse file not reached.")
-    	    # the remaining 64 bytes are the description
 
     	    # Segments can only be fixed size for now, the 8 lines below are checking that only fixed segmenting is used
     	    pulseDescriptorIndices = unique(map(x -> x.PulseDescriptorIndex, pulses))
@@ -43,19 +41,35 @@ function load(f_pls::File{format"PLS"})
     	    # ######
     	    # Read waves
     	    # ######
-    	    wv_header = read(s_wvs, PulseWavesWavesHeader)
+    	    wv_header = read(s_wvs, WavesHeader)
     	    waves = Vector{Vector{WaveRecord}}(undef, n)
     	    samplingType = Vector{Vector{UInt8}}(undef, n)
-    	    for i ∈ 1:n
-    	      waves[i], samplingType[i] = readWave(s_wvs, pulses[i], header)
-    	    end
-	header, pulses, wv_header, waves, samplingType
+    	    #for i ∈ 1:n
+    	    #  waves[i], samplingType[i] = readWave(s_wvs, pulses[i], header)
+    	    #end
+	header, pulses, wv_header, waves, samplingType, MandatoryAppendedVariableLengthRecord
 	end
     end
 end
 
 
-function save(f::File{format"PLS"}, header::PulseWavesHeader, pulses::AbstractVector{<:PulseRecord}, wv_header::WavesHeader, ::Vector{WaveRecord})
-    throw("not yet implemented")
+function save(f_pls::File{format"PLS"}, header::PulseWavesHeader, pulses::Vector{PulseRecord}, wv_header::WavesHeader, waves::Vector{Vector{WaveRecord}}, AVLR::Vector{UInt8})
+  open(f_pls, "w") do s_pls
+    write(s_pls, header)
+    for i ∈ 1:header.NumberOfPulses
+      write(s_pls, pulses[i])
+    end
+    write(s_pls, AVLR)
+  end
+  f_wvs = replace(filename(f_pls), "$(file_extension(f_pls))" => ".wvs")
+  open(f_wvs, "w") do s_wvs
+    write(s_wvs, wv_header)
+    for i ∈ 1:length(waves)
+      for j ∈ 1:length(waves[i])
+	write(s_wvs, waves[i][j])
+      end
+    end
+  end
+  nothing
 end
 
