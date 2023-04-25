@@ -43,11 +43,12 @@ function load(f_pls::File{format"PLS"})
     	    # ######
     	    wv_header = read(s_wvs, WavesHeader)
     	    waves = Vector{Vector{WaveRecord}}(undef, n)
-    	    samplingType = Vector{Vector{UInt8}}(undef, n)
-    	    #for i ∈ 1:n
-    	    #  waves[i], samplingType[i] = readWave(s_wvs, pulses[i], header)
-    	    #end
-	header, pulses, wv_header, waves, samplingType, MandatoryAppendedVariableLengthRecord
+	    #WavePulseDescriptorIndices[i] = Vector{Int8}(undef,n)
+    	    #samplingType = Vector{Vector{UInt8}}(undef, n)
+    	    for i ∈ 1:n
+	      waves[i] = readWave(s_wvs, pulses[i], header, false)
+    	    end
+	header, pulses, wv_header, waves, MandatoryAppendedVariableLengthRecord
 	end
     end
 end
@@ -56,7 +57,7 @@ end
 function save(f_pls::File{format"PLS"}, header::PulseWavesHeader, pulses::Vector{PulseRecord}, wv_header::WavesHeader, waves::Vector{Vector{WaveRecord}}, AVLR::Vector{UInt8})
   open(f_pls, "w") do s_pls
     write(s_pls, header)
-    for i ∈ 1:header.NumberOfPulses
+    for i ∈ 1:length(pulses)#header.NumberOfPulses
       write(s_pls, pulses[i])
     end
     write(s_pls, AVLR)
@@ -64,11 +65,12 @@ function save(f_pls::File{format"PLS"}, header::PulseWavesHeader, pulses::Vector
   f_wvs = replace(filename(f_pls), "$(file_extension(f_pls))" => ".wvs")
   open(f_wvs, "w") do s_wvs
     write(s_wvs, wv_header)
-    for i ∈ 1:length(waves)
-      for j ∈ 1:length(waves[i])
-	write(s_wvs, waves[i][j])
-      end
-    end
+    # writing waves not yet implemented
+    #for i ∈ 1:length(waves)
+    #  for j ∈ 1:length(waves[i])
+    #    write(s_wvs, waves[i][j])
+    #  end
+    #end
   end
   nothing
 end

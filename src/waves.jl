@@ -18,6 +18,12 @@ function Base.read(io::IO, ::Type{WavesHeader})
 		)
 end
 
+function Base.write(io::IO, wv_header::WavesHeader)
+  write(io, wv_header.fileSignature)
+  write(io, wv_header.Compression)
+  write(io, wv_header.Reserved)
+end
+
 """
 Wave structure is highly flexible, only one instance is implemented for now.
 """
@@ -33,12 +39,12 @@ function Base.show(io::IO, w::WaveRecord)
   println(io,string("Samples            = ",w.Samples))
 end
 
-function readWave(io::IO, p::PulseRecord, h::PulseWavesHeader)
+function readWave(io::IO, p::PulseRecord, h::PulseWavesHeader, convert_to_power_ratio=true)
   vlr = only(filter(x -> x.RecordID - 200000 == p.PulseDescriptorIndex, h.VariableLengthRecords))
   n_samplings = vlr.Data.Composition.NumberOfSamplings
   seek(io, p.OffsetToWaves)
   dat = []
-  SamplingTypes = []
+  #SamplingTypes = []
   for sampling in 1:n_samplings
     samplingRecord = vlr.Data.Sampling[sampling]
     n_segments = samplingRecord.NumberOfSegments
@@ -47,13 +53,16 @@ function readWave(io::IO, p::PulseRecord, h::PulseWavesHeader)
     @assert(LUT.UnitOfMeasurement == 1, "Unexpected lookup table encountered. Lookup tables are only used for intensity correction (Unit of measurement == 1), but other was encountered (undefined or range correction)")
     for segment in 1:n_segments
       wv = read(io, WaveRecord)
-      wv.Samples = LUT.Entries[wv.Samples .+ 1]
+      if convert_to_power_ratio
+	wv.Samples = dBToPowerRatio.(LUT.Entries[wv.Samples .+ 1]) #LUT is in dB, we want the power ratio, i.e. the intensity
+      end
+      #however, scaling in this way introduces non-linearity and the peaks may be exaggerated when analysing the entire waveform
       wv.DurationFromAnchor = Float32(samplingRecord.OffsetForDurationFromAnchor + samplingRecord.ScaleForDurationFromAnchor * wv.DurationFromAnchor)
       append!(dat,[wv])
-      append!(SamplingTypes, samplingRecord.Type)
+      #append!(SamplingTypes, samplingRecord.Type)
     end
   end
-  Vector{WaveRecord}(dat), Vector{UInt8}(SamplingTypes)
+  Vector{WaveRecord}(dat)#, p.PulseDescriptorIndex# Vector{UInt8}(SamplingTypes)
 end
 
 function Base.read(io::IO, ::Type{WaveRecord})
@@ -70,3 +79,4 @@ function Base.read(io::IO, ::Type{WaveRecord})
 	      Samples
 	     )
 end
+

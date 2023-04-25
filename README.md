@@ -1,7 +1,7 @@
 # PulseWavesIO.jl
 Julia package for reading the PulseWaves lidar data format.
 
-<img src="logo.svg" width="200">
+<img src="misc/logo.svg" width="200">
 
 ## Overview
 
@@ -20,17 +20,20 @@ Example code:
 ```
 Using PulseWavesIO, FileIO
 
-header, pulses, _, waves, samplingType, _ = load("path/to/pls/file")
+header, pulses, wavesHeader, waves, appendedVariableLengthRecord = load("path/to/pls/file")
 ```
 
 The pulse geometry (anchor and target XYZ) are read raw, and the function `PulsesToRays( pulses, header)` transforms coordinates into target values. The function returns an array of size `Nx2x3`, where N is the number of pulses, then the next dimension is anchor (1) or target (2) coordinates, and the last dimension is the Cartesian coordinates.
 The target coordinates are a direction vector with the length of one sampling unit.
+
+The Waves contain a field 'DurationFromAnchor', which is simply multiplied by the direction vector of the ray to get to the starting point of the wave sampling.
+Each sample's position is offset a unit of the direction vector.
 
 If the timestamps are needed, use the function `RescalePulseTimestamps( pulses, header)` to obtain GPS weektime data from the raw data. Note that there is a difference between GPS time and UTC of about 18-19 seconds, depending on what time your data was captured (search for "leap seconds" to learn more).
 
 ## Roadmap
 
 A goal of this project is to [register the implementation for PulseWaves with FileIO.jl](https://juliaio.github.io/FileIO.jl/stable/registering/) to make it available to users without any extra effort.
-Before that happens, the code needs to be thoroughly tested and refined to ensure it works smoothly.
+Before that happens, the code needs to be thoroughly tested and refined to ensure it works smoothly. For now it was developed with Riegl Q680 data, so a bit finicky if you have other data.
 
 Therefore, __please report any issues you find or submit a pull request__. Thanks!

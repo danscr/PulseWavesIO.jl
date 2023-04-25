@@ -78,17 +78,17 @@ function Base.write(io::IO, r::PulseWavesLookupTableRecord)
   nothing
 end
 
-struct PulseWavesLookupTable
+@gen_io struct PulseWavesLookupTable
   Header::PulseWavesLookupTableHeader
   LUT::PulseWavesLookupTableRecord
 end
 
-function Base.read(io::IO, ::Type{PulseWavesLookupTable})
-  LUTHeader = read(io, PulseWavesLookupTableHeader)
-  LUT = read(io, PulseWavesLookupTableRecord)
-
-  PulseWavesLookupTable(LUTHeader, LUT)
-end
+#function Base.read(io::IO, ::Type{PulseWavesLookupTable})
+#  LUTHeader = read(io, PulseWavesLookupTableHeader)
+#  LUT = read(io, PulseWavesLookupTableRecord)
+#
+#  PulseWavesLookupTable(LUTHeader, LUT)
+#end
 
 
 struct PulseWavesCompositionRecord

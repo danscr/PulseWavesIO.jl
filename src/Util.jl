@@ -21,3 +21,7 @@ function writestring(io, str::AbstractString, nb::Integer)
         write(io, writestr)
     end
 end
+
+function dBToPowerRatio(x::AbstractFloat)
+  10^(x/10)
+end
