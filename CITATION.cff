@@ -27,5 +27,5 @@ keywords:
   - julia
 license: GPL-3.0
 commit: fca144d3ccf6812b0fb5801d0fbcad889171be36
-version: '0.1'
+version: '0.2'
 date-released: '2023-03-14'
