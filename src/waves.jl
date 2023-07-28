@@ -80,3 +80,77 @@ function Base.read(io::IO, ::Type{WaveRecord})
 	     )
 end
 
+
+function WaveformToGaussianMixture(wave::Vector{WaveRecord}, PulseDescriptorIndex::Int, header::PulseWavesHeader)
+  vlr = only(filter(x -> x.RecordID == PulseDescriptorIndex + 200000, header.VariableLengthRecords))
+  n_samplings = vlr.Data.Composition.NumberOfSamplings
+  luts = filter(x -> 300000 <= x.RecordID < 300100, header.VariableLengthRecords)
+  lowIdx = map(x -> x.RecordID == 300001, luts)
+  luts = map(x -> x.Data.LUT, luts)
+  amplitudes = Float64[]
+  mus = Float64[]
+  sigmas = Float64[]
+  
+  k = 0
+  for i in 1:n_samplings
+    SamplingRecord = vlr.Data.Sampling[i]
+    n_segments = SamplingRecord.NumberOfSegments
+    for j in 1:n_segments
+      k += 1
+      if SamplingRecord.Type == 2
+	dc = rcopy(wflidar.decom_adaptive(wave[k].Samples, smooth=true, thres=0.22, width=3))
+	n_peaks = size(dc[3])[1]
+	amplitudes = dc[3][:,2]
+	if SamplingRecord.Channel == 1
+	  lutIdx = lowIdx
+	elseif SamplingRecord.Channel == 0
+	  lutIdx = .!loxIdx
+	else
+	  throw("Unknown sampling channel encountered: $(SamplingRecord.Channel)")
+	end
+	lut = dBToPowerRatio.(only(luts[lutIdx]).Data.LUT.Entries)
+	append!(amplitudes, map(x -> InterpolateLUT(lut, x), amplitudes))
+	append!(mus, dc[3][:,3])
+	append!(sigmas, dc[3][:,4])
+      end
+    end
+  end
+  #create mixture model
+end
+
+function mergeWaveSegments(wave::Vector{WaveRecord}, vlr::PulseWavesVariableLengthRecord)
+  n_samplings = vlr.Data.Composition.NumberOfSamplings
+  MergedWave = zeros(UInt8, 0)
+  LowPowerChannel = zeros(Bool,0)
+  k = 0
+  for i in 1:n_samplings
+    SamplingRecord = vlr.Data.Sampling[i]
+    n_segments = SamplingRecord.NumberOfSegments
+    for j in 1:n_segments
+      k += 1
+      if SamplingRecord.Type == 2
+	if j != n_segments
+	  dt = Int(round(wave[k+1].DurationFromAnchor - wave[k].DurationFromAnchor))
+	  segment = zeros(UInt8, dt-1)
+	  segment[1:wave[k].NumberOfSamples] .= wave[k].Samples
+	  MergedWave = vcat(MergedWave, segment)
+	else
+	  MergedWave = vcat(MergedWave, wave[k].Samples)
+	end
+      end
+    end
+    if SamplingRecord.Channel == 1
+      LowPowerChannel = vcat(LowPowerChannel, ones(Bool, length(MergedWave)))
+    elseif SamplingRecord.Channel == 0
+      LowPowerChannel = vcat(LowPowerChannel, zeros(Bool, length(MergedWave)))
+    end
+  end
+  MergedWave, LowPowerChannel
+  #return one long vector where the gaps between segments are zeros
+end
+
+function mergeWaves(pulses::Vector{PulseRecord}, waves::Vector{WaveRecord}, header::PulseWavesHeader)
+  vlrRecordIDs = map(x -> x.RecordID, header.VariableLengthRecords)
+  PulseDescriptorIndices = map(x -> x.PulseDescriptorIndex, pulses)
+  vlrIdcs = map(x -> x[1], findall(vlrrids .== PulseDescriptorIndices' .+ 200000))
+end

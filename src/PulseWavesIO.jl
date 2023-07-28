@@ -1,6 +1,13 @@
 module PulseWavesIO
 using FileIO
 
+#for gaussian decomp
+import LinearAlgebra
+using Distributions
+using GLMakie, Statistics
+import Peaks
+import LsqFit
+import ImageFiltering
 
 export
     # Types
@@ -10,7 +17,8 @@ export
     WavesHeader,
     WavesRecord,
     PulsesToRays,
-    RescalePulseTimestamps
+    RescalePulseTimestamps,
+    WaveToCoverFractionDistribution
 
     # Functions
     include("meta.jl")
@@ -20,6 +28,7 @@ export
     include("pulses.jl")
     include("waves.jl")
     include("fileio.jl")
+    include("WaveformAnalysis.jl")
 
 function __init__()
     # these should eventually go in
