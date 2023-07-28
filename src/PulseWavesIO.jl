@@ -4,7 +4,7 @@ using FileIO
 #for gaussian decomp
 import LinearAlgebra
 using Distributions
-using GLMakie, Statistics
+using Statistics
 import Peaks
 import LsqFit
 import ImageFiltering
