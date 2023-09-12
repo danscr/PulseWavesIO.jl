@@ -7,6 +7,15 @@ Julia package for reading the PulseWaves lidar data format.
 
 This is a native Julia implementation to read the full waveform lidar data format [PulseWaves](https://github.com/PulseWaves/Specification/blob/master/specification.rst).
 
+## Installation
+
+This package is not yet registered in the Julia registry, it needs to be installed from Github, for example with the code below.
+
+```
+using Pkg
+Pkg.add("url=https://github.com/danscr/PulseWavesIO.jl.git")
+```
+
 ## Example usage
 
 The PulseWaves format is a pair of files, one with ending `.pls`, and one with `.wvs`.
