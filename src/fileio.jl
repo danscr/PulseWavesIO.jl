@@ -33,9 +33,9 @@ function load(f_pls::File{format"PLS"})
     	    pulseDescriptors = filter(x -> x.RecordID - 200000 in pulseDescriptorIndices, header.VariableLengthRecords)
     	    for i in 1:length(pulseDescriptors)
     	      local SamplingRecords = pulseDescriptors[i].Data.Sampling
-    	      for j in 1:length(SamplingRecords)
-    	        @assert(SamplingRecords[j].BitsForNumberOfSegments == 0, "This file contains pulses with variable segmenting. This is not yet implemented.")
-    	      end
+    	      #for j in 1:length(SamplingRecords)
+    	      #  @assert(SamplingRecords[j].BitsForNumberOfSegments == 0, "This file contains pulses with variable segmenting. This is not yet implemented.")
+    	      #end
     	    end
 
     	    # ######

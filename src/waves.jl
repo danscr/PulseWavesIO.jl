@@ -24,6 +24,7 @@ function Base.write(io::IO, wv_header::WavesHeader)
   write(io, wv_header.Reserved)
 end
 
+
 """
 Wave structure is highly flexible, only one instance is implemented for now.
 """
@@ -47,19 +48,33 @@ function readWave(io::IO, p::PulseRecord, h::PulseWavesHeader, convert_to_power_
   #SamplingTypes = []
   for sampling in 1:n_samplings
     samplingRecord = vlr.Data.Sampling[sampling]
-    n_segments = samplingRecord.NumberOfSegments
+    variable_segmenting = samplingRecord.BitsForNumberOfSegments != 0
+    #variable_sampling = samplingRecord.BitsForNumberOfSamples != 0
     LUT_idx = samplingRecord.LookupTableIndex
     LUT = only(filter(x -> x.RecordID - 300000 == LUT_idx, h.VariableLengthRecords)).Data.LUT
     @assert(LUT.UnitOfMeasurement == 1, "Unexpected lookup table encountered. Lookup tables are only used for intensity correction (Unit of measurement == 1), but other was encountered (undefined or range correction)")
+    @assert(samplingRecord.BitsForNumberOfSamples == 16, "Number of samples can only be 16 bits for now.")
+    if variable_segmenting
+      if samplingRecord.BitsForNumberOfSegments == 8
+	nSegmentDtype = UInt8
+      elseif samplingRecord.BitsForNumberOfSegments == 16
+	nSegmentDtype = UInt16
+      else
+	throw("Invalid specification of Bits for number of segments: $(samplingRecord.BitsForNumberOfSegments)")
+      end
+      #variable segmenting reader here
+      n_segments = read(io, nSegmentDtype)
+    else
+      n_segments = samplingRecord.NumberOfSegments
+    end
     for segment in 1:n_segments
+      #read waves
       wv = read(io, WaveRecord)
       if convert_to_power_ratio
-	wv.Samples = dBToPowerRatio.(LUT.Entries[wv.Samples .+ 1]) #LUT is in dB, we want the power ratio, i.e. the intensity
+    	  wv.Samples = dBToPowerRatio.(LUT.Entries[wv.Samples .+ 1]) #LUT is in dB, we want the power ratio, i.e. the intensity
       end
-      #however, scaling in this way introduces non-linearity and the peaks may be exaggerated when analysing the entire waveform
       wv.DurationFromAnchor = Float32(samplingRecord.OffsetForDurationFromAnchor + samplingRecord.ScaleForDurationFromAnchor * wv.DurationFromAnchor)
       append!(dat,[wv])
-      #append!(SamplingTypes, samplingRecord.Type)
     end
   end
   Vector{WaveRecord}(dat)#, p.PulseDescriptorIndex# Vector{UInt8}(SamplingTypes)
@@ -79,7 +94,6 @@ function Base.read(io::IO, ::Type{WaveRecord})
 	      Samples
 	     )
 end
-
 
 function WaveformToGaussianMixture(wave::Vector{WaveRecord}, PulseDescriptorIndex::Int, header::PulseWavesHeader)
   vlr = only(filter(x -> x.RecordID == PulseDescriptorIndex + 200000, header.VariableLengthRecords))
@@ -121,7 +135,7 @@ end
 function mergeWaveSegments(wave::Vector{WaveRecord}, vlr::PulseWavesVariableLengthRecord)
   n_samplings = vlr.Data.Composition.NumberOfSamplings
   MergedWave = zeros(UInt8, 0)
-  LowPowerChannel = zeros(Bool,0)
+  LowPowerChannel = zeros(Bool,0) #true = low power, false = high power
   k = 0
   for i in 1:n_samplings
     SamplingRecord = vlr.Data.Sampling[i]
