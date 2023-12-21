@@ -9,6 +9,69 @@ jldopen("pulsewavesfile.jld2") do io
   global dem = io["dem"]
 end
 
+"""
+Returns two scalars at entry and exit to an axis-aligned bounding box along a ray.
+"""
+function Ray_AABB_intersection(ray, aabb)
+    direction=ray[2,:]
+    dir_fraction = zeros(Float64,3)
+    dir_fraction[direction .== 0] .= Inf
+    dir_fraction[direction .!= 0] .= 1. ./ direction[direction .!= 0]
+    t1 = (aabb[1,1] - ray[1,1]) * dir_fraction[1]
+    t2 = (aabb[2,1] - ray[1,1]) * dir_fraction[1]
+    t3 = (aabb[1,2] - ray[1,2]) * dir_fraction[2]
+    t4 = (aabb[2,2] - ray[1,2]) * dir_fraction[2]
+    t5 = (aabb[1,3] - ray[1,3]) * dir_fraction[3]
+    t6 = (aabb[2,3] - ray[1,3]) * dir_fraction[3]
+    tmin = max(-Inf, min(t1,t2), min(t3,t4), min(t5,t6))
+    tmax = min(Inf, max(t1,t2), max(t3,t4), max(t5,t6))
+
+    if tmax < 0
+        return nothing
+    end
+    if tmin > tmax
+        return nothing
+    end
+    return tmin, tmax
+end
+
+
+function InterceptanceTrilinearWeights(cfdist::MixtureModel, nodes::Vector{Float64}, weights::Vector{Float64}, ray::Matrix{Float64}, xyzi::Vector{Float64}, resolution::Float64)
+  a, b = Ray_AABB_intersection(ray, hcat(xyzi .- resolution, xyzi .+ resolution)')
+  cf_0 = cdf(cfdist, a)
+  distance_to_xyz(x) = abs.(ray[1,:] .+ ray[2,:] .* x .- xyzi)
+  w(x) = any(distance_to_xyz(x) .> resolution) ? 0. : prod(1 .- distance_to_xyz(x) ./ resolution)
+  #delta_cf = GaussLegendreIntegral(x -> pdf(cfdist,x) * w(x), a, b, nodes, weights)
+  delta_cf = pdf.(cfdist, a:.001:b) * .001 * .14985490630017206  .* w.(a:.001:b)
+  W = sum(w.(a:.001:b)) * .001 * .14985490630017206
+  attenuation = sum(delta_cf) / (1-cf_0) /  W #the sum of weigths also indicates the path length along which attenuation was measured
+  #W = GaussLegendreIntegral(x -> w(x), a,b,nodes,weights)
+  nothing, 1-cf_0, attenuation
+end
+
+function WaveInformation_trilinear(ray::Matrix{Float64}, xyzi::Vector{Float64}, resolution::Float64, wave::Vector{PulseWavesIO.WaveRecord}, groundintersection::Float64, header::PulseWavesIO.PulseWavesHeader, pdi::Integer, nodes::Vector{Float64}, weights::Vector{Float64})
+  try
+    local cfdist = WaveToCoverFractionDistribution(wave, groundintersection, header, pdi)
+    return InterceptanceTrilinearWeights(cfdist, nodes, weights, ray, xyzi, resolution)
+  catch e
+    #throw("uhetonas")
+    if isa(e, String)
+      if occursin("Iterative smoothing", e)
+        return nothing
+      else
+	println(wave)
+	rethrow(e)
+      end
+    #elseif isa(e, AssertionError)
+    #  return nothing
+  elseif isa(e,AssertionError)
+    return nothing#string(e)
+  else
+      rethrow(e)
+    end
+  end
+end
+
 
 #distributions, lambda, gi, cfdist = WaveToCoverFractionDistribution(waves[7], rays[7,:,:], dem, header, pdi[7])
 function GaussLegendreIntegral(f, a, b, nodes, weights)
@@ -95,7 +158,7 @@ for flightlinenumber in 5:length(filenames)
   ### the code below here needs to be expanded for all grid points
   # for all ray-point combinations, find the distance to the closest point on the ray
   beam_subset = findall(in_bbox);
-  groundIntersections = pmap(i -> PulseWavesIO.RayGroundIntersection(rays[i,:,:], dem), beam_subset);
+  groundIntersections = map(i -> PulseWavesIO.RayGroundIntersection(rays[i,:,:], dem), beam_subset);
   
   #println("Extracting waveform information...")
   wave_info = pmap(i -> WaveInformation(waves[beam_subset[i]], groundIntersections[i], header,pdi[beam_subset[i]], nodes, weights), 1:length(beam_subset));

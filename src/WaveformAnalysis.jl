@@ -43,45 +43,90 @@ function IterativelySmoothedGaussianDecomposition(wave::Vector{UInt8}, width::Nu
   end
 end
 
-function CheckDecomposition(waves, nmin, nmax)
+"""
+This function requires GLMakie, which is not a dependency. It needs to be loaded explicitly and passed as the last argument.
+"""
+function CheckDecomposition(waves, nmin, nmax, GLMakie)
   for i in nmin:nmax
     wave = waves[i]
     for j in 1:length(wave)
       try
 	p, bias, rmse, w = PulseWavesIO.IterativelySmoothedGaussianDecomposition(wave[j].Samples; smooth=true, width=1, rel_threshold=.1, abs_threshold=4)
-        f= Figure(resolution=(1600,600))
-	ax=Axis(f[1,1:5], limits=(nothing, (0,150)))
-	lines!(1:.01:length(wave[j].Samples), GaussianSum(1:.01:length(wave[j].Samples), p[:]), color=:firebrick, label="Decomposition")
-        lines!(wave[j].Samples, color=:royalblue, linestyle="--", label="Original waveform (with noise)"); hlines!([4], color=:black, linestyle="..", label="Absolute noise threshold")
+        f= GLMakie.Figure(resolution=(1600,600))
+	ax=GLMakie.Axis(f[1,1:5], limits=(nothing, (0,150)))
+	GLMakie.lines!(1:.01:length(wave[j].Samples), GaussianSum(1:.01:length(wave[j].Samples), p[:]), color=:firebrick, label="Decomposition")
+        GLMakie.lines!(wave[j].Samples, color=:royalblue, linestyle="--", label="Original waveform (with noise)")
+	GLMakie.hlines!([4], color=:black, linestyle="..", label="Absolute noise threshold")
 	#pars = reshape(p, (3,div(length(p),3)+1))
 	for k in 1:size(p)[2]
-	  lines!(repeat([p[2,k]],2), [0,p[1,k]], linewidth=1, color=:black)
+	  GLMakie.lines!(repeat([p[2,k]],2), [0,p[1,k]], linewidth=1, color=:black)
 	  fwhm = p[3,k] .* 2.355
-	  lines!([p[2,k] .- fwhm ./ 2, p[2,k] .+ fwhm ./ 2],repeat([p[1,k]],2) ./ 2, linewidth=1, color=:black)
+	  GLMakie.lines!([p[2,k] .- fwhm ./ 2, p[2,k] .+ fwhm ./ 2],repeat([p[1,k]],2) ./ 2, linewidth=1, color=:black)
 	end
-	axislegend()
-	text!(0,120,text="Bias = $(bias)\nRMSE = $(rmse)\nGaussian blur width = $w\nParameters : $(p)")
-        return f#GLMakie.save("dev/system_pulse_decomposition/wavedecomposition_$(i)_$(j).png", f)
+	GLMakie.axislegend()
+	GLMakie.text!(0,120,text="Bias = $(bias)\nRMSE = $(rmse)\nGaussian blur width = $w\nParameters : $(p)")
+        GLMakie.save("dev/system_pulse_decomposition_aug23/wavedecomposition_$(i)_$(j).png", f)
       catch e
 	println("wave $(i) segment $(j) failed: $(e)")
-	f= Figure(resolution=(1600,600))
-	ax=Axis(f[1,1:5], limits=(nothing, (0,255)))
+	f= GLMakie.Figure(resolution=(1600,600))
+	ax=GLMakie.Axis(f[1,1:5], limits=(nothing, (0,255)))
 	#lines!(1:.01:length(wave[j].Samples), PulseWavesIO.GaussianSum(1:.01:length(wave[j].Samples), p[:]), color=:firebrick, label="Decomposition")
-        lines!(wave[j].Samples, color=:royalblue, linewidth=5, linestyle="--", label="Original waveform (with noise)"); hlines!([4], color=:black, linewidth=5, linestyle="..", label="Absolute noise threshold")
-	axislegend()
-	text!(30,120,text="Decomposition failed!", fontsize=30)
-        return f#GLMakie.save("dev/system_pulse_decomposition/wavedecomposition_$(i)_$(j).png", f)
+        GLMakie.lines!(wave[j].Samples, color=:royalblue, linewidth=5, linestyle="--", label="Original waveform (with noise)")
+	GLMakie.hlines!([4], color=:black, linewidth=5, linestyle="..", label="Absolute noise threshold")
+	GLMakie.axislegend()
+	GLMakie.text!(30,120,text="Decomposition failed!", fontsize=30)
+        GLMakie.save("dev/system_pulse_decomposition_aug23/wavedecomposition_$(i)_$(j).png", f)
       end
     end
   end
 end
 
+"""
+This function requires GLMakie, which is not a dependency. It needs to be loaded explicitly and passed as the last argument.
+"""
+function CheckDeconvolvedWaveform(waves, nmin, nmax, GLMakie)
+  for i in nmin:nmax
+    wave = waves[i]
+    for j in 1:length(wave)
+      try
+	p, bias, rmse, w = PulseWavesIO.IterativelySmoothedGaussianDecomposition(wave[j].Samples; smooth=true, width=1, rel_threshold=.1, abs_threshold=4)
+	if j > 1
+	p[3,:] = sqrt.(p[3,:] .^ 2 .- 2. ^2) #approximately the outgoing pulse standard deviation 
+      end
+        f= GLMakie.Figure(resolution=(1600,600))
+	ax=GLMakie.Axis(f[1,1:5], limits=(nothing, (0,150)))
+	GLMakie.lines!(1:.01:length(wave[j].Samples), GaussianSum(1:.01:length(wave[j].Samples), p[:]), color=:firebrick, label="Deconvolved waveform")
+        GLMakie.lines!(wave[j].Samples, color=:royalblue, linestyle="--", label="Original waveform (with noise)")
+	GLMakie.hlines!([4], color=:black, linestyle="..", label="Absolute noise threshold")
+	#pars = reshape(p, (3,div(length(p),3)+1))
+	for k in 1:size(p)[2]
+	  GLMakie.lines!(repeat([p[2,k]],2), [0,p[1,k]], linewidth=1, color=:black)
+	  fwhm = p[3,k] .* 2.355
+	  GLMakie.lines!([p[2,k] .- fwhm ./ 2, p[2,k] .+ fwhm ./ 2],repeat([p[1,k]],2) ./ 2, linewidth=1, color=:black)
+	end
+	GLMakie.axislegend()
+	GLMakie.text!(0,120,text="Bias = $(bias)\nRMSE = $(rmse)\nGaussian blur width = $w\nParameters : $(p)")
+        GLMakie.save("dev/system_pulse_decomposition_aug23/wavedecomposition_$(i)_$(j).png", f)
+      catch e
+	println("wave $(i) segment $(j) failed: $(e)")
+	f= GLMakie.Figure(resolution=(1600,600))
+	ax=GLMakie.Axis(f[1,1:5], limits=(nothing, (0,255)))
+	#lines!(1:.01:length(wave[j].Samples), PulseWavesIO.GaussianSum(1:.01:length(wave[j].Samples), p[:]), color=:firebrick, label="Decomposition")
+        GLMakie.lines!(wave[j].Samples, color=:royalblue, linewidth=5, linestyle="--", label="Original waveform (with noise)")
+	GLMakie.hlines!([4], color=:black, linewidth=5, linestyle="..", label="Absolute noise threshold")
+	GLMakie.axislegend()
+	GLMakie.text!(30,120,text="Decomposition failed!", fontsize=30)
+        GLMakie.save("dev/system_pulse_decomposition_aug23/wavedecomposition_$(i)_$(j).png", f)
+      end
+    end
+  end
+end
 
-function GaussianPDFWithAmplitude(x::Int64, A::Float64, mu::Float64, sigma::Float64)
+function GaussianPDFWithAmplitude(x::Union{Int64,Float64}, A::Float64, mu::Float64, sigma::Float64)
   A * exp(-(x - mu)^2 / (2 * sigma^2))
 end
 
-function GaussianSum(x::UnitRange{Int64}, p::Vector{Float64})
+function GaussianSum(x::Union{UnitRange{Int64},StepRangeLen{Float64}}, p::Vector{Float64})
   n = Int(length(p) / 3)
   #sum([GaussianPDFWithAmplitude.(x, p[i,1], p[i,2], p[i,3]) for i in 1:size(p)[1]])
   sum([GaussianPDFWithAmplitude.(x, p[(i-1)*3 + 1], p[(i-1)*3 + 2], p[(i-1)*3 + 3]) for i in 1:n])
