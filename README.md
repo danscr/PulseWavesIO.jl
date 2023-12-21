@@ -40,6 +40,10 @@ Each sample's position is offset a unit of the direction vector.
 
 If the timestamps are needed, use the function `RescalePulseTimestamps( pulses, header)` to obtain GPS weektime data from the raw data. Note that there is a difference between GPS time and UTC of about 18-19 seconds, depending on what time your data was captured (search for "leap seconds" to learn more).
 
+## Experimental functionality
+
+The folder `dev` contains two files named `workflow*.jl`. These were used to estimate plant area density from ALS data and go beyond the scope of reading PulseWaves files.
+
 ## Roadmap
 
 A goal of this project is to [register the implementation for PulseWaves with FileIO.jl](https://juliaio.github.io/FileIO.jl/stable/registering/) to make it available to users without any extra effort.
